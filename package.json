@@ -9,11 +9,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "amqplib": "^0.10.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "kafkajs": "^2.2.4"
   },
   "devDependencies": {
+    "@types/amqplib": "^0.10.6",
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.10"
   }
