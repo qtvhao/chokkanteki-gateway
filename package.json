@@ -12,7 +12,8 @@
     "amqplib": "^0.10.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "kafkajs": "^2.2.4"
+    "kafkajs": "^2.2.4",
+    "typescript": "^5.8.2"
   },
   "devDependencies": {
     "@types/amqplib": "^0.10.6",
