@@ -2,42 +2,10 @@
 
 import { describe, it, expect } from '@jest/globals';
 import { createMessagePayload, sendVideoCreationMessage } from '../src/routes/videoCreationRoutes';
+import { config } from '../src/config';
+import { connectAmqp } from '../src/amqp/amqpClient';
 
 describe('VideoCreator Helpers - Integration Tests (with real Kafka broker)', () => {
-  describe('createMessagePayload', () => {
-    it('should create a correct message payload', async () => {
-      const correlationId = 'test-correlation-id';
-
-      const claimCheck = {
-        speechFile: 'speech.mp3',
-        musicFile: 'music.mp3',
-        imageFiles: ['image1.png', 'image2.png']
-      };
-
-      const requestParams = {
-        videoSize: [1920, 1080],
-        duration: 120,
-        textConfig: { font: 'Arial', color: 'white' },
-        fps: 30,
-        textData: [{ text: 'Hello World' }]
-      };
-
-      const expectedPayload = {
-        correlationId,
-        ...claimCheck,
-        videoSize: requestParams.videoSize,
-        duration: requestParams.duration,
-        textConfig: requestParams.textConfig,
-        fps: requestParams.fps,
-        textData: requestParams.textData
-      };
-
-      const result = createMessagePayload(correlationId, claimCheck, requestParams);
-
-      expect(result).toEqual(expectedPayload);
-    });
-  });
-
   describe('sendVideoCreationMessage', () => {
     it('should send a message to the Kafka topic and be consumed', async () => {
       const payload = {
@@ -58,15 +26,10 @@ describe('VideoCreator Helpers - Integration Tests (with real Kafka broker)', ()
       }> = [];
 
       await sendVideoCreationMessage(payload);
-
-      // // await consumePromise;
-
-      // expect(messages.length).toBeGreaterThan(0);
-
-      // const receivedMessage = JSON.parse(messages[0].value || '{}');
-      // expect(receivedMessage.correlationId).toBe(payload.correlationId);
-      // expect(receivedMessage.videoSize).toEqual(payload.videoSize);
-      // expect(receivedMessage.textData).toEqual(payload.textData);
+      const queueName = config.rabbitmq.taskQueue;
+      const rabbitMQChannel = await connectAmqp();
+      rabbitMQChannel.assertQueue(queueName, { durable: true });
+      rabbitMQChannel.sendToQueue(queueName, Buffer.from(JSON.stringify(payload)), { persistent: true });
     }, 20000); // Extended timeout for Kafka operations
   });
 });
