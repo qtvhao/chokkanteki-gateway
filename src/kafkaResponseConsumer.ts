@@ -1,5 +1,5 @@
-import { startKafkaConsumer } from './kafka/kafkaConsumer.js';
-import { RequestResponseService } from './requestResponseService.js';
+import { startKafkaConsumer } from './kafka/kafkaConsumer';
+import { RequestResponseService } from './requestResponseService';
 import { EachMessagePayload } from 'kafkajs';
 
 export class KafkaResponseConsumer {

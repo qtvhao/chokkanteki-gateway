@@ -1,9 +1,9 @@
 // src/app.js
-import { KafkaResponseConsumer } from './kafkaResponseConsumer.js';
-import { Server } from './server.js';
-import { RequestResponseService } from './requestResponseService.js';
-import { KafkaToRabbitMQConsumer } from './kafkaToRabbitMQConsumer.js';
-import { config } from './config.js';
+import { KafkaResponseConsumer } from './kafkaResponseConsumer';
+import { Server } from './server';
+import { RequestResponseService } from './requestResponseService';
+import { KafkaToRabbitMQConsumer } from './kafkaToRabbitMQConsumer';
+import { config } from './config';
 
 class App {
     private static instance: App;

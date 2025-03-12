@@ -1,6 +1,6 @@
 // src/kafka/kafkaClient.js
 import { Kafka, Admin } from 'kafkajs';
-import { config } from '../config.js';
+import { config } from '../config';
 
 const kafkaInstance: Kafka = new Kafka({
     clientId: config.kafka.clientId,

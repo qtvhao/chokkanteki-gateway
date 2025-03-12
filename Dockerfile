@@ -6,6 +6,3 @@ COPY yarn.lock package.json tsconfig.json .
 RUN yarn
 
 COPY src src
-
-RUN npx tsc
-

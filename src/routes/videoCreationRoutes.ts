@@ -2,10 +2,10 @@ import express, { Request, Response } from 'express';
 import multer from 'multer';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
-import { sendMessageToQueue } from '../utils/kafkaHelper.js';
-import { config } from '../config.js';
-import { Storage } from '../utils/storage.js';
-import { App } from '../app.js';
+import { sendMessageToQueue } from '../utils/kafkaHelper';
+import { config } from '../config';
+import { Storage } from '../utils/storage';
+import { App } from '../app';
 
 export class VideoCreator {
     speechFile?: string;

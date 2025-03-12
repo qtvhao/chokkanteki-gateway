@@ -1,5 +1,5 @@
 // src/server.js
-import videoCreationRoutes from './routes/videoCreationRoutes.js';
+import videoCreationRoutes from './routes/videoCreationRoutes';
 import express, { Application, Request, Response } from 'express';
 
 export class Server {
