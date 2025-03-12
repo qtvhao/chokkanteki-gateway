@@ -3,11 +3,9 @@ import multer from 'multer';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { sendMessageToQueue } from '../utils/kafkaHelper.js';
-import { config } from '../config'; // Importing config for topic name
-import { Storage } from '../utils/storage';
-import { App } from '../app';
-
-const requestResponseService = App.getInstance().requestResponseService;
+import { config } from '../config.js'; // Importing config for topic name
+import { Storage } from '../utils/storage.js';
+import { App } from '../app.js';
 
 export class VideoCreator {
     speechFile?: string;
@@ -111,6 +109,7 @@ router.post(
         { name: 'image_files', maxCount: 20 }
     ]),
     async (req: Request, res: Response) => {
+        const requestResponseService = App.getInstance().requestResponseService;
         const correlationId = uuidv4();
         console.log(`🔄 Received video creation request: ${correlationId}`);
 
@@ -185,6 +184,7 @@ router.post(
 
 router.get('/v1/video-creation/:correlationId', (req: Request, res: Response) => {
     const { correlationId } = req.params;
+    const requestResponseService = App.getInstance().requestResponseService;
     console.log(`📦 Fetching video response for correlation_id: ${correlationId}`);
 
     const response = requestResponseService.getResponse(correlationId);
