@@ -162,7 +162,7 @@ router.post(
                 textData
             };
 
-            requestResponseService.addRequest(correlationId);
+            requestResponseService.addRequest(correlationId).then(console.log);
 
             await sendMessageToQueue(config.kafka.topics.request, messagePayload);
             console.log(`✅ Kafka message sent for video creation request: ${correlationId}`);
