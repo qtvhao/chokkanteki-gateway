@@ -3,7 +3,7 @@ import multer from 'multer';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { sendMessageToQueue } from '../utils/kafkaHelper.js';
-import { config } from '../config.js'; // Importing config for topic name
+import { config } from '../config.js';
 import { Storage } from '../utils/storage.js';
 import { App } from '../app.js';
 
@@ -100,6 +100,76 @@ function parseRequestData(req: Request) {
     }
 }
 
+function validateAndParseRequest(req: Request) {
+    const parsed = parseRequestData(req);
+    if (parsed.error) {
+        throw new Error(parsed.error);
+    }
+    return parsed;
+}
+
+async function buildClaimCheck(req: Request, storage: Storage) {
+    return await handleFileUploads(req, storage);
+}
+
+export function createMessagePayload(correlationId: string, claimCheck: Record<string, any>, requestParams: any) {
+    const { videoSize, duration, textConfig, fps, textData } = requestParams;
+
+    return {
+        correlationId,
+        ...claimCheck,
+        videoSize,
+        duration,
+        textConfig,
+        fps,
+        textData
+    };
+}
+
+export async function sendVideoCreationMessage(payload: any) {
+    await sendMessageToQueue(config.kafka.topics.request, payload);
+}
+
+async function handleFileUploads(req: Request, storage: Storage) {
+    const filePaths = saveUploadedFiles(req);
+    const claimCheck: Record<string, string[] | string> = {};
+
+    if (filePaths.speech) {
+        claimCheck.speechFile = await storage.uploadAudioFile(filePaths.speech);
+    }
+
+    if (filePaths.music) {
+        claimCheck.musicFile = await storage.uploadAudioFile(filePaths.music);
+    }
+
+    const imageClaims: string[] = [];
+    for (const image of filePaths.images) {
+        const imageClaim = await storage.uploadAudioFile(image);
+        imageClaims.push(imageClaim);
+    }
+
+    claimCheck.imageFiles = imageClaims;
+
+    return claimCheck;
+}
+
+async function processVideoCreationRequest(req: Request, correlationId: string) {
+    const storage = await Storage.getInstance();
+
+    try {
+        const requestParams = validateAndParseRequest(req);
+        const claimCheck = await buildClaimCheck(req, storage);
+        const messagePayload = createMessagePayload(correlationId, claimCheck, requestParams);
+
+        await sendVideoCreationMessage(messagePayload);
+
+        return { success: true };
+    } catch (error: any) {
+        console.error(`❌ Error in processVideoCreationRequest: ${error.message}`);
+        return { error: error.message };
+    }
+}
+
 // Routes
 router.post(
     '/v1/video-creation/',
@@ -109,75 +179,34 @@ router.post(
         { name: 'image_files', maxCount: 20 }
     ]),
     async (req: Request, res: Response) => {
-        const requestResponseService = App.getInstance().requestResponseService;
         const correlationId = uuidv4();
         console.log(`🔄 Received video creation request: ${correlationId}`);
 
-        const storage = await Storage.getInstance();
-        const filePaths = saveUploadedFiles(req);
-
-        const {
-            textData,
-            videoSize,
-            textConfig,
-            fps,
-            duration,
-            error
-        } = parseRequestData(req);
-
-        if (error) {
-            console.error(`❌ Error in request: ${error}`);
-            res.status(400).json({ error });
-            return;
-        }
+        const requestResponseService = App.getInstance().requestResponseService;
+        requestResponseService.addRequest(correlationId).then(console.log);
 
         try {
-            const claimCheck: Record<string, string[] | string> = {};
+            const result = await processVideoCreationRequest(req, correlationId);
 
-            if (filePaths.speech) {
-                const speechClaim = await storage.uploadAudioFile(filePaths.speech);
-                claimCheck.speechFile = speechClaim;
+            if (result.error) {
+                console.error(`❌ Error in request: ${result.error}`);
+                res.status(400).json({ error: result.error });
+
+                return;
             }
 
-            if (filePaths.music) {
-                const musicClaim = await storage.uploadAudioFile(filePaths.music);
-                claimCheck.musicFile = musicClaim;
-            }
-
-            const imageClaims: string[] = [];
-            for (const image of filePaths.images) {
-                const imageClaim = await storage.uploadAudioFile(image);
-                imageClaims.push(imageClaim);
-            }
-
-            claimCheck.imageFiles = imageClaims;
-
-            const messagePayload = {
-                correlationId,
-                ...claimCheck,
-                videoSize,
-                duration,
-                textConfig,
-                fps,
-                textData
-            };
-
-            requestResponseService.addRequest(correlationId).then(console.log);
-
-            await sendMessageToQueue(config.kafka.topics.request, messagePayload);
             console.log(`✅ Kafka message sent for video creation request: ${correlationId}`);
 
             res.status(202).json({
                 correlation_id: correlationId,
                 message: `Video processing started. Use GET /v1/video-creation/${correlationId} to check status or download when ready.`
             });
-        } catch (uploadError) {
-            console.error(`❌ Failed to upload files or send message:`, uploadError);
+        } catch (error) {
+            console.error(`❌ Failed to process video creation request:`, error);
             res.status(500).json({
                 error: 'Failed to process video creation request',
                 correlation_id: correlationId
             });
-            return;
         }
     }
 );
