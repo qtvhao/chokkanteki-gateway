@@ -1,4 +1,5 @@
 // src/server.js
+import videoCreationRoutes from './routes/videoCreationRoutes';
 import express, { Application, Request, Response } from 'express';
 
 export class Server {
@@ -12,6 +13,7 @@ export class Server {
     }
 
     private setupRoutes(): void {
+        this.app.use('/api', videoCreationRoutes);
         this.app.get('/healthz', (req: Request, res: Response) => {
             res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
         });

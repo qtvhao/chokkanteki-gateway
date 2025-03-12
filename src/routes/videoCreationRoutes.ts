@@ -104,7 +104,7 @@ function parseRequestData(req: Request) {
 
 // Routes
 router.post(
-    '/api/v1/video-creation/',
+    '/v1/video-creation/',
     upload.fields([
         { name: 'speech_file', maxCount: 1 },
         { name: 'music_file', maxCount: 1 },
@@ -170,7 +170,7 @@ router.post(
 
             res.status(202).json({
                 correlation_id: correlationId,
-                message: `Video processing started. Use GET /api/v1/video-creation/${correlationId} to check status or download when ready.`
+                message: `Video processing started. Use GET /v1/video-creation/${correlationId} to check status or download when ready.`
             });
         } catch (uploadError) {
             console.error(`❌ Failed to upload files or send message:`, uploadError);
@@ -183,7 +183,7 @@ router.post(
     }
 );
 
-router.get('/api/v1/video-creation/:correlationId', (req: Request, res: Response) => {
+router.get('/v1/video-creation/:correlationId', (req: Request, res: Response) => {
     const { correlationId } = req.params;
     console.log(`📦 Fetching video response for correlation_id: ${correlationId}`);
 
