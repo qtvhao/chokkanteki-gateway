@@ -1,15 +1,24 @@
 // src/utils/storage.ts
 import { minioClient } from '../minio/minioClient.js';
-import { config } from '../config.js'
+import { config } from '../config.js';
 import { randomBytes } from 'crypto';
 
 export class Storage {
+    private static instance: Storage;
     private client = minioClient;
     private bucketName: string;
 
-    constructor() {
+    private constructor() {
         this.bucketName = config.minio.bucketName;
-        this.ensureBucketExists();
+    }
+
+    static async getInstance(): Promise<Storage> {
+        if (!Storage.instance) {
+            const storage = new Storage();
+            await storage.ensureBucketExists();
+            Storage.instance = storage;
+        }
+        return Storage.instance;
     }
 
     /**

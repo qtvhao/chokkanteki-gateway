@@ -3,6 +3,9 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import { sendMessageToQueue } from '../utils/kafkaHelper.js';
+import { config } from '../config'; // Importing config for topic name
+import { Storage } from '../utils/storage';
 
 class VideoCreator {
     speechFile?: string;
@@ -58,13 +61,13 @@ const lock: { isLocked: boolean } = { isLocked: false };
 function saveUploadedFiles(req: Request) {
     console.log('📂 Saving uploaded files...');
     const speech = req.files && 'speech_file' in req.files
-        ? (req.files['speech_file'] as Express.Multer.File[])[0].path
+        ? (req.files['speech_file'] as Express.Multer.File[])[0]
         : undefined;
     const music = req.files && 'music_file' in req.files
-        ? (req.files['music_file'] as Express.Multer.File[])[0].path
+        ? (req.files['music_file'] as Express.Multer.File[])[0]
         : undefined;
     const images = req.files && 'image_files' in req.files
-        ? (req.files['image_files'] as Express.Multer.File[]).map(file => file.path)
+        ? (req.files['image_files'] as Express.Multer.File[])
         : [];
 
     return { speech, music, images };
@@ -145,9 +148,11 @@ router.post(
         { name: 'music_file', maxCount: 1 },
         { name: 'image_files', maxCount: 20 }
     ]),
-    (req: Request, res: Response) => {
+    async (req: Request, res: Response) => {
         const correlationId = uuidv4();
         console.log(`🔄 Received video creation request: ${correlationId}`);
+
+        const storage = await Storage.getInstance();
 
         const filePaths = saveUploadedFiles(req);
         const {
@@ -165,27 +170,51 @@ router.post(
             return;
         }
 
-        // Start video creation asynchronously
-        setImmediate(() => {
-            if (videoSize) {
-                createVideoFile(
-                    correlationId,
-                    filePaths.speech,
-                    filePaths.music,
-                    filePaths.images,
-                    videoSize,
-                    duration,
-                    textConfig,
-                    fps,
-                    textData
-                );
-            }
-        });
+        try {
+            const claimCheck: Record<string, string[] | string> = {};
 
-        console.log(`✅ Video processing started: ${correlationId}`);
+            if (filePaths.speech) {
+                const speechClaim = await storage.uploadAudioFile(filePaths.speech);
+                claimCheck.speechFile = speechClaim;
+            }
+
+            if (filePaths.music) {
+                const musicClaim = await storage.uploadAudioFile(filePaths.music);
+                claimCheck.musicFile = musicClaim;
+            }
+
+            const imageClaims: string[] = [];
+            for (const image of filePaths.images) {
+                const imageClaim = await storage.uploadAudioFile(image);
+                imageClaims.push(imageClaim);
+            }
+
+            claimCheck.imageFiles = imageClaims;
+
+            const messagePayload = {
+                correlationId,
+                ...claimCheck,
+                videoSize,
+                duration,
+                textConfig,
+                fps,
+                textData
+            };
+
+            await sendMessageToQueue(config.kafka.topics.request, messagePayload);
+            console.log(`✅ Kafka message sent for video creation request: ${correlationId}`);
+        } catch (uploadError) {
+            console.error(`❌ Failed to upload files or send message:`, uploadError);
+            res.status(500).json({
+                error: 'Failed to process video creation request',
+                correlation_id: correlationId
+            });
+            return;
+        }
+
         res.status(202).json({
             correlation_id: correlationId,
-            message: `Video processing started. Use GET /api/v1/video-creation/${correlationId} to download.`
+            message: `Video processing started. Use GET /api/v1/video-creation/${correlationId} to check status or download when ready.`
         });
     }
 );
