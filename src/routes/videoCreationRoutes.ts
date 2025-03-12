@@ -1,13 +1,15 @@
 import express, { Request, Response } from 'express';
 import multer from 'multer';
-import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { sendMessageToQueue } from '../utils/kafkaHelper.js';
 import { config } from '../config'; // Importing config for topic name
 import { Storage } from '../utils/storage';
+import { App } from '../app';
 
-class VideoCreator {
+const requestResponseService = App.getInstance().requestResponseService;
+
+export class VideoCreator {
     speechFile?: string;
     musicFile?: string;
     videoSize: [number, number];
@@ -54,8 +56,6 @@ class VideoCreator {
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
-const videoMap: Record<string, string> = {};
-const lock: { isLocked: boolean } = { isLocked: false };
 
 // Helpers
 function saveUploadedFiles(req: Request) {
@@ -102,44 +102,6 @@ function parseRequestData(req: Request) {
     }
 }
 
-function createVideoFile(
-    correlationId: string,
-    speechPath: string | undefined,
-    musicPath: string | undefined,
-    imagePaths: string[],
-    videoSize: [number, number],
-    duration: number,
-    textConfig: any,
-    fps: number,
-    textData: any
-) {
-    if (lock.isLocked) {
-        console.log('🔒 Video creation already in progress');
-        return;
-    }
-
-    lock.isLocked = true;
-    console.log(`⏳ Processing video for correlation_id: ${correlationId}...`);
-
-    const outputFile = path.join('outputs', `output_video_${correlationId}.mp4`);
-    const videoCreator = new VideoCreator({
-        speechFile: speechPath,
-        musicFile: musicPath,
-        videoSize,
-        duration,
-        imageFiles: imagePaths,
-        textConfig,
-        outputFile,
-        fps
-    });
-
-    videoCreator.createVideo(textData);
-    videoMap[correlationId] = outputFile;
-
-    console.log(`✅ Video creation completed: ${outputFile}`);
-    lock.isLocked = false;
-}
-
 // Routes
 router.post(
     '/api/v1/video-creation/',
@@ -153,8 +115,8 @@ router.post(
         console.log(`🔄 Received video creation request: ${correlationId}`);
 
         const storage = await Storage.getInstance();
-
         const filePaths = saveUploadedFiles(req);
+
         const {
             textData,
             videoSize,
@@ -201,8 +163,15 @@ router.post(
                 textData
             };
 
+            requestResponseService.addRequest(correlationId);
+
             await sendMessageToQueue(config.kafka.topics.request, messagePayload);
             console.log(`✅ Kafka message sent for video creation request: ${correlationId}`);
+
+            res.status(202).json({
+                correlation_id: correlationId,
+                message: `Video processing started. Use GET /api/v1/video-creation/${correlationId} to check status or download when ready.`
+            });
         } catch (uploadError) {
             console.error(`❌ Failed to upload files or send message:`, uploadError);
             res.status(500).json({
@@ -211,31 +180,29 @@ router.post(
             });
             return;
         }
-
-        res.status(202).json({
-            correlation_id: correlationId,
-            message: `Video processing started. Use GET /api/v1/video-creation/${correlationId} to check status or download when ready.`
-        });
     }
 );
 
 router.get('/api/v1/video-creation/:correlationId', (req: Request, res: Response) => {
     const { correlationId } = req.params;
-    console.log(`📦 Fetching video for correlation_id: ${correlationId}`);
+    console.log(`📦 Fetching video response for correlation_id: ${correlationId}`);
 
-    const outputFile = videoMap[correlationId];
-    if (!outputFile || !fs.existsSync(outputFile)) {
+    const response = requestResponseService.getResponse(correlationId);
+
+    if (!response) {
         console.warn(`⚠️ Video not found or still processing: ${correlationId}`);
         res.status(404).json({
             error: 'Video not found or still processing',
             correlation_id: correlationId
         });
-
         return;
     }
 
-    console.log(`✅ Video ready for download: ${correlationId}`);
-    res.download(outputFile, 'output_video.mp4');
+    console.log(`✅ Video processing completed for correlation_id: ${correlationId}`);
+    res.status(200).json({
+        correlation_id: correlationId,
+        response
+    });
 });
 
 export default router;
