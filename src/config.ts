@@ -67,13 +67,13 @@ export const config: AppConfig = {
         brokers: getEnv('KAFKA_BROKERS', 'localhost:9092').split(','),
         groupId: getEnv('KAFKA_GROUP_ID', 'my-consumer-group'),
         topics: {
-            request: getEnv('KAFKA_REQUEST_TOPIC', 'REQUEST_TOPIC'),
-            response: getEnv('KAFKA_RESPONSE_TOPIC', 'RESPONSE_TOPIC'),
+            request: getEnv('KAFKA_REQUEST_TOPIC', 'REQUEST_CHOKKAN_TOPIC'),
+            response: getEnv('KAFKA_RESPONSE_TOPIC', 'RESPONSE_CHOKKAN_TOPIC'),
         },
     },
     rabbitmq: {
         url: getEnv('RABBITMQ_URL', 'amqp://localhost'),
-        taskQueue: getEnv('RABBITMQ_TASK_QUEUE', 'TASK_QUEUE'),
+        taskQueue: getEnv('RABBITMQ_TASK_QUEUE', 'CHOKKAN_TASK_QUEUE'),
         prefetch: getEnvNumber('RABBITMQ_PREFETCH', 1), // Limit concurrent processing
     },
     server: {
@@ -85,6 +85,6 @@ export const config: AppConfig = {
         accessKey: getEnv('MINIO_ROOT_USER', 'minioadmin'),
         secretKey: getEnv('MINIO_ROOT_PASSWORD', 'minioadmin'),
         useSSL: getEnv('MINIO_USE_SSL', 'false') === 'true',
-        bucketName: getEnv('MINIO_BUCKET_NAME', 'my-bucket'),
+        bucketName: getEnv('MINIO_BUCKET_NAME', 'chokkan-bucket'),
     },
 };
