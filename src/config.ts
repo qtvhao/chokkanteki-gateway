@@ -63,9 +63,9 @@ const getEnvNumber = (key: string, defaultValue?: number): number => {
 // Construct the strongly typed config object
 export const config: AppConfig = {
     kafka: {
-        clientId: getEnv('KAFKA_CLIENT_ID', 'my-app'),
+        clientId: getEnv('KAFKA_CLIENT_ID', 'chokkan-app'),
         brokers: getEnv('KAFKA_BROKERS', 'localhost:9092').split(','),
-        groupId: getEnv('KAFKA_GROUP_ID', 'my-consumer-group'),
+        groupId: getEnv('KAFKA_GROUP_ID', 'chokkan-consumer-group'),
         topics: {
             request: getEnv('KAFKA_REQUEST_TOPIC', 'REQUEST_CHOKKAN_TOPIC'),
             response: getEnv('KAFKA_RESPONSE_TOPIC', 'RESPONSE_CHOKKAN_TOPIC'),
