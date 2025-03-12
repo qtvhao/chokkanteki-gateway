@@ -8,3 +8,4 @@ RUN yarn
 COPY src src
 
 RUN npx tsc
+
