@@ -57,25 +57,7 @@ describe('VideoCreator Helpers - Integration Tests (with real Kafka broker)', ()
         headers: Record<string, any> | undefined;
       }> = [];
 
-      // // await consumer.subscribe({ topic, fromBeginning: false });
-
-      // // const consumePromise = new Promise<void>((resolve, reject) => {
-      // //   const timer = setTimeout(() => reject(new Error('Timeout waiting for message')), 10000);
-
-      // //   consumer.run({
-      // //     eachMessage: async ({ topic, partition, message }) => {
-      // //       clearTimeout(timer);
-      // //       messages.push({
-      // //         key: message.key?.toString(),
-      // //         value: message.value?.toString(),
-      // //         headers: message.headers
-      // //       });
-      // //       resolve();
-      // //     }
-      // //   });
-      // // });
-
-      // await sendVideoCreationMessage(payload);
+      await sendVideoCreationMessage(payload);
 
       // // await consumePromise;
 
