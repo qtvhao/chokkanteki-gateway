@@ -4,11 +4,17 @@ const kafka = getKafkaConnection();
 const producer = kafka.producer();
 const admin = kafka.admin();
 let existingTopics = new Set<string>();
-(async () => {
-    await producer.connect();
-    await admin.connect();
-    existingTopics = new Set(await admin.listTopics());
-})();
+
+let isConnected = false;
+
+const lazyConnect = async () => {
+    if (!isConnected) {
+        await producer.connect();
+        await admin.connect();
+        // existingTopics = new Set(await admin.listTopics());
+        isConnected = true;
+    }
+};
 
 const refreshTopics = async () => {
     existingTopics = new Set(await admin.listTopics());
@@ -27,6 +33,7 @@ const ensureTopicExists = async (topic: string) => {
 
 export const sendMessageToQueue = async (topic: string, message: Record<string, unknown>): Promise<void> => {
     try {
+        await lazyConnect();
         console.log(`Sending message to queue topic '${topic}':`, message);
         
         await ensureTopicExists(topic);
@@ -43,14 +50,15 @@ export const sendMessageToQueue = async (topic: string, message: Record<string, 
     }
 };
 
+// const refreshInterval = setInterval(refreshTopics, 60000);
+
 const shutdown = async () => {
+    // clearInterval(refreshInterval); // <--- This clears the interval!
     console.log('Disconnecting Kafka producer...');
     await producer.disconnect();
     await admin.disconnect();
     console.log('Kafka producer disconnected');
 };
-
-setInterval(refreshTopics, 60000); // Refresh topic list every 60 seconds
 
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);

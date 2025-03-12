@@ -1,18 +1,11 @@
 // __tests__/videoCreatorHelpers.test.ts
 
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
 import { createMessagePayload, sendVideoCreationMessage } from '../src/routes/videoCreationRoutes';
-// import { config } from '../dist/config';
-// import { sendMessageToQueue } from '../dist/utils/kafkaHelper'; // Real function
 
-describe('VideoCreator Helpers - Integration Tests', () => {
-
-  beforeEach(() => {
-    // If needed: clean up, reset data, etc.
-  });
-
+describe('VideoCreator Helpers - Integration Tests (with real Kafka broker)', () => {
   describe('createMessagePayload', () => {
-    it('should create a correct message payload', () => {
+    it('should create a correct message payload', async () => {
       const correlationId = 'test-correlation-id';
 
       const claimCheck = {
@@ -46,26 +39,52 @@ describe('VideoCreator Helpers - Integration Tests', () => {
   });
 
   describe('sendVideoCreationMessage', () => {
-    it('should send a message to the Kafka topic', async () => {
-    //   const payload = {
-    //     correlationId: `test-correlation-id-${Date.now()}`,
-    //     videoSize: [1280, 720],
-    //     duration: 60,
-    //     textConfig: { font: 'Verdana' },
-    //     fps: 24,
-    //     textData: [{ text: 'Test' }]
-    //   };
+    it('should send a message to the Kafka topic and be consumed', async () => {
+      const payload = {
+        correlationId: `test-correlation-id-${Date.now()}`,
+        videoSize: [1280, 720],
+        duration: 60,
+        textConfig: { font: 'Verdana' },
+        fps: 24,
+        textData: [{ text: 'Test' }]
+      };
 
-    //   // Call the real function to send the message
-    //   const result = await sendVideoCreationMessage(payload);
+      const topic = 'video-creation-requests'; // Replace with your actual topic name
 
-    //   // Assertions:
-    //   // 1. No errors were thrown (if result returns something useful, check it here)
-    //   expect(result).toBeUndefined(); // or check whatever your function returns
+      const messages: Array<{
+        key: string | undefined;
+        value: string | undefined;
+        headers: Record<string, any> | undefined;
+      }> = [];
 
-    //   // 2. You could optionally add a Kafka consumer here to assert the message was published,
-    //   // but that's often done in an E2E test with a test consumer
-    }, 10000); // <-- optional timeout if Kafka is slow
+      // // await consumer.subscribe({ topic, fromBeginning: false });
+
+      // // const consumePromise = new Promise<void>((resolve, reject) => {
+      // //   const timer = setTimeout(() => reject(new Error('Timeout waiting for message')), 10000);
+
+      // //   consumer.run({
+      // //     eachMessage: async ({ topic, partition, message }) => {
+      // //       clearTimeout(timer);
+      // //       messages.push({
+      // //         key: message.key?.toString(),
+      // //         value: message.value?.toString(),
+      // //         headers: message.headers
+      // //       });
+      // //       resolve();
+      // //     }
+      // //   });
+      // // });
+
+      // await sendVideoCreationMessage(payload);
+
+      // // await consumePromise;
+
+      // expect(messages.length).toBeGreaterThan(0);
+
+      // const receivedMessage = JSON.parse(messages[0].value || '{}');
+      // expect(receivedMessage.correlationId).toBe(payload.correlationId);
+      // expect(receivedMessage.videoSize).toEqual(payload.videoSize);
+      // expect(receivedMessage.textData).toEqual(payload.textData);
+    }, 20000); // Extended timeout for Kafka operations
   });
-
 });

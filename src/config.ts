@@ -64,7 +64,7 @@ const getEnvNumber = (key: string, defaultValue?: number): number => {
 export const config: AppConfig = {
     kafka: {
         clientId: getEnv('KAFKA_CLIENT_ID', 'chokkan-app'),
-        brokers: getEnv('KAFKA_BROKERS', 'localhost:9092').split(','),
+        brokers: getEnv('KAFKA_BROKERS', 'redpanda:9092').split(','),
         groupId: getEnv('KAFKA_GROUP_ID', 'chokkan-consumer-group'),
         topics: {
             request: getEnv('KAFKA_REQUEST_TOPIC', 'REQUEST_CHOKKAN_TOPIC'),
