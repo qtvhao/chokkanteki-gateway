@@ -1,4 +1,4 @@
-import { getKafkaConnection } from '../kafka/kafkaClient';
+import { getKafkaConnection } from '../kafka/kafkaClient.js';
 
 const kafka = getKafkaConnection();
 const producer = kafka.producer();

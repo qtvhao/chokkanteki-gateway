@@ -1,8 +1,8 @@
 import { EachMessagePayload } from 'kafkajs';
 import { Channel } from 'amqplib';
-import { connectAmqp } from './amqp/amqpClient';
-import { config } from './config';
-import { startKafkaConsumer } from './kafka/kafkaConsumer';
+import { connectAmqp } from './amqp/amqpClient.js';
+import { config } from './config.js';
+import { startKafkaConsumer } from './kafka/kafkaConsumer.js';
 
 export class KafkaToRabbitMQConsumer {
     private rabbitMQChannel: Channel | null = null;
