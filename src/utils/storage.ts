@@ -51,10 +51,12 @@ export class Storage {
      * @param fileName - The name of the file.
      * @param filePath - The local path to the file.
      */
-    async uploadFile(fileName: string, filePath: string): Promise<void> {
+    async uploadFile(fileName: string, filePath: string): Promise<string> {
         try {
             await this.client.fPutObject(this.bucketName, fileName, filePath);
             console.log(`✅ File '${fileName}' uploaded successfully`);
+
+            return fileName;
         } catch (error) {
             console.error(`❌ Error uploading file '${fileName}':`, error);
             throw error;

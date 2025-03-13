@@ -3,22 +3,44 @@
 import { describe, it, expect } from '@jest/globals';
 import { createMessagePayload, sendVideoCreationMessage } from '../src/routes/videoCreationRoutes';
 import { config } from '../src/config';
+import { Storage } from '../src/utils/storage';
 import { connectAmqp } from '../src/amqp/amqpClient';
+import path from 'path';
 
 describe('VideoCreator Helpers - Integration Tests (with real Kafka broker)', () => {
   describe('sendVideoCreationMessage', () => {
-    it('should send a message to the Kafka topic and be consumed', async () => {
+    it('should upload files to MinIO, update the payload, send a message to the Kafka topic and be consumed', async () => {
+      // Initialize Storage instance
+      const storage = await Storage.getInstance();
+
+      // Paths to your local files
+      const speechFilePath = ('/tmp/sample_data/speech.aac');
+      const musicFilePath = ('/tmp/sample_data/emo.mp3');
+      const imageFilePaths = [
+        ('/tmp/sample_data/puppy_0.jpg'),
+        ('/tmp/sample_data/puppy_1.jpg'),
+        ('/tmp/sample_data/puppy_2.jpg'),
+        ('/tmp/sample_data/puppy_4.jpg'),
+        ('/tmp/sample_data/puppy_5.jpg'),
+      ];
+
+      // Upload files to MinIO
+      const uploadedSpeechFile = await storage.uploadFile('speech.aac', speechFilePath);
+      const uploadedMusicFile = await storage.uploadFile('emo.mp3', musicFilePath);
+
+      const uploadedImageFileKeys: string[] = [];
+      for (const imagePath of imageFilePaths) {
+        const fileName = path.basename(imagePath);
+        const uploadedImageFileKey = await storage.uploadFile(fileName, imagePath);
+        uploadedImageFileKeys.push(uploadedImageFileKey);
+      }
+
+      // Build the updated payload using uploaded file names
       const payload = {
         correlationId: '0e872abb-f212-4b25-91cb-9a576e681cdd',
-        speechFile: 'ac7857-speech.aac',
-        musicFile: '7be7b7-emo.mp3',
-        imageFiles: [
-          'd28727-puppy_0.jpg',
-          '566118-puppy_1.jpg',
-          'f43300-puppy_2.jpg',
-          'd52970-puppy_4.jpg',
-          '5b7e0f-puppy_5.jpg'
-        ],
+        speechFile: uploadedSpeechFile,
+        musicFile: uploadedMusicFile,
+        imageFiles: uploadedImageFileKeys,
         videoSize: [1920, 1080],
         duration: 15,
         textConfig: { font_color: 'white', background_color: 'black' },
@@ -46,7 +68,10 @@ describe('VideoCreator Helpers - Integration Tests (with real Kafka broker)', ()
         ]
       };
 
+      // Send video creation message
       await sendVideoCreationMessage(payload);
+
+      // Send to RabbitMQ for further processing
       const queueName = config.rabbitmq.taskQueue;
       const rabbitMQChannel = await connectAmqp();
       rabbitMQChannel.assertQueue(queueName, { durable: true });
