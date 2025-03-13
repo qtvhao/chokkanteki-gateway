@@ -6,14 +6,26 @@ import { config } from '../src/config';
 import { Storage } from '../src/utils/storage';
 import { connectAmqp } from '../src/amqp/amqpClient';
 import path from 'path';
+import { KafkaResponseConsumer } from '../src/kafkaResponseConsumer';
+import { RequestResponseService } from '../src/requestResponseService';
 
 describe('VideoCreator Helpers - Integration Tests (with real Kafka broker)', () => {
   describe('sendVideoCreationMessage', () => {
     it('should upload files to MinIO, update the payload, send a message to the Kafka topic and be consumed', async () => {
-      // Initialize Storage instance
+      const requestResponseService = new RequestResponseService();
+      const kafkaResponseConsumer = new KafkaResponseConsumer(
+        config.kafka.topics.response,
+        config.kafka.groupId,
+        requestResponseService
+      );
+
+      console.log('🚀 Starting Kafka consumer...');
+      await kafkaResponseConsumer.start();
+
+      console.log('🗂️ Initializing Storage instance...');
       const storage = await Storage.getInstance();
 
-      // Paths to your local files
+      console.log('📁 Preparing file paths...');
       const speechFilePath = ('/tmp/sample_data/speech.aac');
       const musicFilePath = ('/tmp/sample_data/emo.mp3');
       const imageFilePaths = [
@@ -24,7 +36,7 @@ describe('VideoCreator Helpers - Integration Tests (with real Kafka broker)', ()
         ('/tmp/sample_data/puppy_5.jpg'),
       ];
 
-      // Upload files to MinIO
+      console.log('⬆️ Uploading files to MinIO...');
       const uploadedSpeechFile = await storage.uploadFile('speech.aac', speechFilePath);
       const uploadedMusicFile = await storage.uploadFile('emo.mp3', musicFilePath);
 
@@ -35,16 +47,18 @@ describe('VideoCreator Helpers - Integration Tests (with real Kafka broker)', ()
         uploadedImageFileKeys.push(uploadedImageFileKey);
       }
 
-      // Build the updated payload using uploaded file names
+      console.log('📝 Building message payload...');
+      const correlationId = '0e872abb-f212-4b25-91cb-9a576e681cdd';
+
       const payload = {
-        correlationId: '0e872abb-f212-4b25-91cb-9a576e681cdd',
+        correlationId,
         speechFile: uploadedSpeechFile,
         musicFile: uploadedMusicFile,
         imageFiles: uploadedImageFileKeys,
         videoSize: [1920, 1080],
-        duration: 15,
+        duration: 1,
         textConfig: { font_color: 'white', background_color: 'black' },
-        fps: 24,
+        fps: 1,
         textData: [
           { word: 'Ladybird', start: 0, end: 0.44 },
           { word: 'là', start: 0.44, end: 0.66 },
@@ -68,14 +82,41 @@ describe('VideoCreator Helpers - Integration Tests (with real Kafka broker)', ()
         ]
       };
 
-      // Send video creation message
+      console.log('📤 Sending video creation message to Kafka...');
       await sendVideoCreationMessage(payload);
 
-      // Send to RabbitMQ for further processing
+      console.log('📨 Sending message to RabbitMQ queue...');
       const queueName = config.rabbitmq.taskQueue;
       const rabbitMQChannel = await connectAmqp();
       rabbitMQChannel.assertQueue(queueName, { durable: true });
       rabbitMQChannel.sendToQueue(queueName, Buffer.from(JSON.stringify(payload)), { persistent: true });
-    }, 20000); // Extended timeout for Kafka operations
+
+      console.log('⏳ Waiting for Kafka response (polling)...');
+      const timeoutMs = 5 * 60 * 1000; // 5 minutes
+      const pollIntervalMs = 1000; // 1 second interval
+      const startTime = Date.now();
+
+      let retrievedResponse = null;
+
+      while ((Date.now() - startTime) < timeoutMs) {
+        retrievedResponse = requestResponseService.getResponse(correlationId);
+
+        if (retrievedResponse) {
+          console.log('✅ Retrieved response early:', retrievedResponse);
+          break;
+        }
+
+        console.log(`🔄 Polling for response... waited ${(Date.now() - startTime) / 1000}s so far`);
+        await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+      }
+
+      if (!retrievedResponse) {
+        console.error(`❌ No response received within ${timeoutMs / 1000} seconds for correlationId: ${correlationId}`);
+        throw new Error(`No response received within ${timeoutMs / 1000} seconds for correlationId: ${correlationId}`);
+      }
+
+      expect(retrievedResponse).toBeDefined();
+      console.log('🎉 Final retrieved response:', retrievedResponse);
+    }, 310000); // Extended timeout for Kafka operations + wait
   });
 });
