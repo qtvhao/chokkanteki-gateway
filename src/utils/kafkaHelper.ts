@@ -12,6 +12,7 @@ const lazyConnect = async () => {
         await producer.connect();
         await admin.connect();
         // existingTopics = new Set(await admin.listTopics());
+        await refreshTopics()
         isConnected = true;
     }
 };
