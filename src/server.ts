@@ -13,7 +13,7 @@ export class Server {
     }
 
     private setupRoutes(): void {
-        this.app.use('/api', videoCreationRoutes);
+        this.app.use('/api/v1', videoCreationRoutes);
         this.app.get('/healthz', (req: Request, res: Response) => {
             res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
         });

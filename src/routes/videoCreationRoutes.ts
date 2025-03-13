@@ -172,7 +172,7 @@ async function processVideoCreationRequest(req: Request, correlationId: string) 
 
 // Routes
 router.post(
-    '/v1/video-creation/',
+    '/video-creation/',
     upload.fields([
         { name: 'speech_file', maxCount: 1 },
         { name: 'music_file', maxCount: 1 },
@@ -211,7 +211,7 @@ router.post(
     }
 );
 
-router.get('/v1/video-creation/:correlationId', (req: Request, res: Response) => {
+router.get('/video-creation/:correlationId', (req: Request, res: Response) => {
     const { correlationId } = req.params;
     const requestResponseService = App.getInstance().requestResponseService;
     console.log(`📦 Fetching video response for correlation_id: ${correlationId}`);
