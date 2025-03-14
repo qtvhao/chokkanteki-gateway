@@ -211,14 +211,14 @@ router.post(
     }
 );
 
-router.get('/video-creation/:correlationId', (req: Request, res: Response) => {
+router.get('/video-creation/:correlationId', async (req: Request, res: Response) => {
     const { correlationId } = req.params;
     const requestResponseService = App.getInstance().requestResponseService;
     console.log(`📦 Fetching video response for correlation_id: ${correlationId}`);
 
     const response = requestResponseService.getResponse(correlationId);
 
-    if (!response) {
+    if (!response || !response.videoFile) {
         console.warn(`⚠️ Video not found or still processing: ${correlationId}`);
         res.status(404).json({
             error: 'Video not found or still processing',
@@ -227,11 +227,22 @@ router.get('/video-creation/:correlationId', (req: Request, res: Response) => {
         return;
     }
 
-    console.log(`✅ Video processing completed for correlation_id: ${correlationId}`);
-    res.status(200).json({
-        correlation_id: correlationId,
-        response
-    });
+    try {
+        const storage = await Storage.getInstance();
+        const stream = await storage.getFileStream(response.videoFile);
+
+        res.setHeader('Content-Type', 'video/mp4');
+        res.setHeader('Content-Disposition', `attachment; filename="${response.videoFile}"`);
+
+        console.log(`✅ Streaming video file '${response.videoFile}' for correlation_id: ${correlationId}`);
+        stream.pipe(res);
+    } catch (error) {
+        console.error(`❌ Error streaming video file '${response.videoFile}':`, error);
+        res.status(500).json({
+            error: 'Failed to stream video file',
+            correlation_id: correlationId
+        });
+    }
 });
 
 export default router;

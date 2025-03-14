@@ -109,4 +109,20 @@ export class Storage {
             throw error;
         }
     }
-}
+
+    /**
+     * Retrieves a readable stream of a file from MinIO.
+     * @param fileName - The name of the file.
+     * @returns {Promise<Stream>} - Readable stream of the file.
+     */
+    async getFileStream(fileName: string): Promise<NodeJS.ReadableStream> {
+        try {
+            const stream = await this.client.getObject(this.bucketName, fileName);
+            console.log(`📤 Streaming file '${fileName}'`);
+            return stream;
+        } catch (error) {
+            console.error(`❌ Error getting stream for file '${fileName}':`, error);
+            throw error;
+        }
+    }
+} 
