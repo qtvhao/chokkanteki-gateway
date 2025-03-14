@@ -230,6 +230,7 @@ router.get('/video-creation/:correlationId', async (req: Request, res: Response)
     if (response.status === 'processing') {
         console.log(`⏳ Video is still processing. Progress: ${response.progress || 0}%`);
         res.status(200).json({
+            hostname: response.hostname,
             correlation_id: correlationId,
             status: response.status,
             progress: response.progress || 0
