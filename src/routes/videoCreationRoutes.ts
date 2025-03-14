@@ -218,11 +218,31 @@ router.get('/video-creation/:correlationId', async (req: Request, res: Response)
 
     const response = requestResponseService.getResponse(correlationId);
 
-    if (!response || !response.videoFile) {
-        console.warn(`⚠️ Video not found or still processing: ${correlationId}`);
+    if (!response) {
+        console.warn(`⚠️ No status found for correlation_id: ${correlationId}`);
         res.status(404).json({
-            error: 'Video not found or still processing',
+            error: 'Request not found',
             correlation_id: correlationId
+        });
+        return;
+    }
+
+    if (response.status === 'processing') {
+        console.log(`⏳ Video is still processing. Progress: ${response.progress || 0}%`);
+        res.status(200).json({
+            correlation_id: correlationId,
+            status: response.status,
+            progress: response.progress || 0
+        });
+        return;
+    }
+
+    if (!response.videoFile) {
+        console.warn(`⚠️ Video file missing, still processing: ${correlationId}`);
+        res.status(202).json({
+            correlation_id: correlationId,
+            status: response.status,
+            message: 'Video is still processing'
         });
         return;
     }
