@@ -78,7 +78,10 @@ function parseRequestData(req: Request) {
         const videoSize: [number, number] = req.body.video_size ? JSON.parse(req.body.video_size) : [120, 120];
         const textConfig = JSON.parse(req.body.text_config || '{}');
         const fps = parseInt(req.body.fps);
-        const duration = parseFloat(req.body.duration);
+        const duration = req.body.duration !== undefined ? parseFloat(req.body.duration) : undefined;
+
+        const startTime = req.body.start_time !== undefined ? parseFloat(req.body.start_time) : undefined;
+        const endTime = req.body.end_time !== undefined ? parseFloat(req.body.end_time) : undefined;
 
         if (!Array.isArray(videoSize) || videoSize.length !== 2) {
             return { error: 'Invalid or missing video_size. Provide as [width, height]' };
@@ -89,11 +92,25 @@ function parseRequestData(req: Request) {
         if (isNaN(fps)) {
             return { error: 'Invalid or missing fps. Provide a valid integer' };
         }
-        if (isNaN(duration)) {
-            return { error: 'Invalid or missing duration. Provide a valid numeric' };
+
+        if (duration === undefined || isNaN(duration)) {
+            if (startTime === undefined || isNaN(startTime)) {
+                return { error: 'Missing duration. If duration is not provided, start_time is required.' };
+            }
+            if (endTime === undefined || isNaN(endTime)) {
+                return { error: 'Missing duration. If duration is not provided, end_time is required.' };
+            }
         }
 
-        return { textData, videoSize, textConfig, fps, duration };
+        return {
+            textData,
+            videoSize,
+            textConfig,
+            fps,
+            duration,
+            startTime,
+            endTime
+        };
     } catch (error) {
         console.error('❌ Invalid JSON format in request fields');
         return { error: 'Invalid JSON format in request fields' };
@@ -113,7 +130,15 @@ async function buildClaimCheck(req: Request, storage: Storage) {
 }
 
 export function createMessagePayload(correlationId: string, claimCheck: Record<string, any>, requestParams: any) {
-    const { videoSize, duration, textConfig, fps, textData } = requestParams;
+    const {
+        videoSize,
+        duration,
+        textConfig,
+        fps,
+        textData,
+        startTime,
+        endTime
+    } = requestParams;
 
     return {
         correlationId,
@@ -122,7 +147,9 @@ export function createMessagePayload(correlationId: string, claimCheck: Record<s
         duration,
         textConfig,
         fps,
-        textData
+        textData,
+        startTime,
+        endTime
     };
 }
 
