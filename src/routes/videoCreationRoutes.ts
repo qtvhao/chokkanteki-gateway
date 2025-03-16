@@ -183,7 +183,7 @@ router.post(
         console.log(`🔄 Received video creation request: ${correlationId}`);
 
         const requestResponseService = App.getInstance().requestResponseService;
-        requestResponseService.addRequest(correlationId).then(console.log);
+        requestResponseService.addRequest(correlationId).then(console.log).catch(console.log);
 
         try {
             const result = await processVideoCreationRequest(req, correlationId);
