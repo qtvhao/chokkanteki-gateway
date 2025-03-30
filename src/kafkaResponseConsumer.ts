@@ -30,7 +30,7 @@ export class KafkaResponseConsumer {
             // Process the response message (can be customized further)
             const responseData = JSON.parse(messageValue);
             this.processResponse(responseData);
-            if (responseData.correlationId) {
+            if (responseData.correlationId && responseData.status === "completed") {
                 this.requestResponseService.storeResponse(responseData.correlationId, responseData);
             }
         } catch (error) {
