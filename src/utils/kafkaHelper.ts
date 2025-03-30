@@ -35,7 +35,7 @@ const ensureTopicExists = async (topic: string) => {
 export const sendMessageToQueue = async (topic: string, message: Record<string, unknown>): Promise<void> => {
     try {
         await lazyConnect();
-        console.log(`Sending message to queue topic '${topic}':`, message);
+        console.log(`Sending message to queue topic '${topic}':`, JSON.stringify(message).slice(80));
         
         await ensureTopicExists(topic);
         
