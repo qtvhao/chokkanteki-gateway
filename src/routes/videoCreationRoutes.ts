@@ -56,6 +56,12 @@ const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
 // Helpers
+interface ClaimCheck {
+    speechFile?: string;
+    musicFile?: string;
+    imageFiles: string[];
+}
+
 function saveUploadedFiles(req: Request) {
     console.log('📂 Saving uploaded files...');
     const speech = req.files && 'speech_file' in req.files
@@ -125,11 +131,7 @@ function validateAndParseRequest(req: Request) {
     return parsed;
 }
 
-async function buildClaimCheck(req: Request, storage: Storage) {
-    return await handleFileUploads(req, storage);
-}
-
-export function createMessagePayload(correlationId: string, claimCheck: Record<string, any>, requestParams: any) {
+export function createMessagePayload(correlationId: string, claimCheck: ClaimCheck, requestParams: any) {
     const {
         videoSize,
         duration,
@@ -157,9 +159,9 @@ export async function sendVideoCreationMessage(payload: any) {
     await sendMessageToQueue(config.kafka.topics.request, payload);
 }
 
-async function handleFileUploads(req: Request, storage: Storage) {
+async function handleFileUploads(req: Request, storage: Storage): Promise<ClaimCheck> {
     const filePaths = saveUploadedFiles(req);
-    const claimCheck: Record<string, string[] | string> = {};
+    const claimCheck: ClaimCheck = { imageFiles: [] };
 
     if (filePaths.speech) {
         claimCheck.speechFile = await storage.uploadAudioFile(filePaths.speech);
@@ -177,6 +179,10 @@ async function handleFileUploads(req: Request, storage: Storage) {
 
     claimCheck.imageFiles = imageClaims;
 
+    if (imageClaims.length === 0) {
+        throw new Error('At least one image file is required for video creation.');
+    }
+
     return claimCheck;
 }
 
@@ -185,7 +191,7 @@ async function processVideoCreationRequest(req: Request, correlationId: string) 
 
     try {
         const requestParams = validateAndParseRequest(req);
-        const claimCheck = await buildClaimCheck(req, storage);
+        const claimCheck = await handleFileUploads(req, storage);
         const messagePayload = createMessagePayload(correlationId, claimCheck, requestParams);
 
         await sendVideoCreationMessage(messagePayload);
