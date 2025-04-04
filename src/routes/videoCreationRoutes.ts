@@ -93,7 +93,10 @@ function parseRequestData(req: Request) {
         const startTime = req.body.start_time !== undefined ? parseFloat(req.body.start_time) : undefined;
         const endTime = req.body.end_time !== undefined ? parseFloat(req.body.end_time) : undefined;
 
-        const parentTaskId = req.body.parent_task_id || '';
+        const parentTaskId = req.body.parent_task_id;
+        if (!parentTaskId || typeof parentTaskId !== 'string' || parentTaskId.trim() === '') {
+            return { error: 'Missing or invalid parent_task_id. It must be a non-empty string.' };
+        }
 
         if (!Array.isArray(videoSize) || videoSize.length !== 2) {
             return { error: 'Invalid or missing video_size. Provide as [width, height]' };
