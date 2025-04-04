@@ -16,6 +16,7 @@ export class VideoCreator {
     textConfig: any;
     outputFile: string;
     fps: number;
+    parentTaskId: string;
 
     constructor({
         speechFile,
@@ -25,7 +26,8 @@ export class VideoCreator {
         imageFiles,
         textConfig,
         outputFile,
-        fps
+        fps,
+        parentTaskId
     }: {
         speechFile?: string;
         musicFile?: string;
@@ -35,6 +37,7 @@ export class VideoCreator {
         textConfig: any;
         outputFile: string;
         fps: number;
+        parentTaskId: string;
     }) {
         this.speechFile = speechFile;
         this.musicFile = musicFile;
@@ -44,6 +47,7 @@ export class VideoCreator {
         this.textConfig = textConfig;
         this.outputFile = outputFile;
         this.fps = fps;
+        this.parentTaskId = parentTaskId;
     }
 
     createVideo(textData: any) {
@@ -89,6 +93,8 @@ function parseRequestData(req: Request) {
         const startTime = req.body.start_time !== undefined ? parseFloat(req.body.start_time) : undefined;
         const endTime = req.body.end_time !== undefined ? parseFloat(req.body.end_time) : undefined;
 
+        const parentTaskId = req.body.parent_task_id || '';
+
         if (!Array.isArray(videoSize) || videoSize.length !== 2) {
             return { error: 'Invalid or missing video_size. Provide as [width, height]' };
         }
@@ -115,7 +121,8 @@ function parseRequestData(req: Request) {
             fps,
             duration,
             startTime,
-            endTime
+            endTime,
+            parentTaskId
         };
     } catch (error) {
         console.error('❌ Invalid JSON format in request fields');
@@ -139,7 +146,8 @@ export function createMessagePayload(correlationId: string, claimCheck: ClaimChe
         fps,
         textData,
         startTime,
-        endTime
+        endTime,
+        parentTaskId
     } = requestParams;
 
     return {
@@ -151,7 +159,8 @@ export function createMessagePayload(correlationId: string, claimCheck: ClaimChe
         fps,
         textData,
         startTime,
-        endTime
+        endTime,
+        parentTaskId
     };
 }
 
